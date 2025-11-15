@@ -2,11 +2,11 @@
 # echo "Actual bash running this script: $BASH"
 # echo "Bash version: $BASH_VERSION"
 
-# Contributors: Jessica Card, Anonymous,  Pranav Mantri
-# Author: Wei Alexander Xin
+# Contributors: Jessica Card, Anonymous, Pranav Mantri
 # Special thanks to Jessica Card for original script and colors
-# Thanks to Ryan Sherby, Brian Paick, and Anonymous for contributions
 # Special thanks to Pranav Mantri for parallelization
+# Thanks to Ryan Sherby, Brian Paick, and Anonymous for contributions
+# Author: Wei Alexander Xin
 # Last edited: Nov 15, 2025
 # Version: 1.05
 # https://github.com/eggrollofchaos/go_batch_test_script
@@ -23,8 +23,8 @@
 #
 # Note re: logging --
 # The verbosity levels in this script requires adding logging via `slog` to your `*_test.go` file, otherwise will fail.
-# See README for more information on how I implemented it.
-# If logging isn't enabled, just omit any verbosity flag (-v) from command line.
+# See README for more information on how to implement.
+# If logging isn't enabled, just omit any verbosity flags (-v) from command line.
 #
 # Note re: timing --
 # The SLOW_TIME threshold is for tracking test runs that are slow to complete, defaulting to 1m.
@@ -33,9 +33,8 @@
 # Hitting the <go test> TIMEOUT deadline causes a panic with exit status 2 in the log output, and are marked FAILED.
 #
 # Note re: homework assignments --
-# The setup for Parallel mode is such that if you do not specify a test suite (omit -z) and do not use positional test names,
+# The setup is such that if you do not specify a test suite (omit -z) and do not use positional test names,
 # The `./...` will find all tests in all subdirectories, i.e. pkg/paxos, pkg/pingpong.
-# This differs from Serial, but I figured may as well leave it as is.
 
 ##########################################################
 # ================ COMS 4113 TEST SUITES =============== #
