@@ -42,9 +42,10 @@ chmod +x run_tests.sh
 
 ### 3. `slog` Setup (Required for `v` flags)
 
-To use the verbosity flags (`-v`, `-vv`, ...), you **must** add `slog` flag parsing to the `*_test.go` file(s). If you don't do this, the script will fail with a "flag provided but not defined" error.
+Presumably you are already using `slog` for logging because of how simple it is to set log level at runtime. If so, you may have already set up command line flags for this purpose. If not, here is a simple implementation.  
+To use the log verbosity command line options for this script (`-v`, `-vv`, ...), simply add `slog` flag parsing to the `*_test.go` file(s). Otherwise the script will fail with a "flag provided but not defined" error.
 
-Add this code to one of your `*_test.go` files (e.g., `test_test.go`):
+Add this code to your `*_test.go` file(s) (e.g., `test_test.go`):
 
 ```go
 import (
@@ -53,13 +54,13 @@ import (
     "os"
 )
 
-// This init function is called by 'go test' before any tests are run.
-func init() {
-    // We must register our loglevel flag with the 'flag' package.
+// This main function is called by <go test> before any tests are run
+func main() {
+    // Register -loglevel flag with the 'flag' package
     logLevel := flag.Int("loglevel", 0, "Set log level: 0=Error, 1=Warn, 2=Info, 3=Debug/Trace")
     
-    // This is a bit of a hack to ensure flags are parsed.
-    // 'go test' doesn't parse custom flags automatically.
+    // This is a bit of a hack to ensure flags are parsed,
+    // because apparently <go test> doesn't parse custom flags automatically.
     flag.Parse()
 
     var level slog.Level
