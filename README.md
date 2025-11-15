@@ -3,19 +3,20 @@
 This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).
 
 ## 🌟 Features
-- **Overall Progress Monitor:** In `PARALLEL` mode, a monitor now tracks all worker processes and prints the total batch progress (e.g., `[Overall: 10%] 500/5000 test executions completed (1m30s)`).
+- **Overall progress monitor:** In `PARALLEL` mode, a monitor now tracks all worker processes and prints the total batch progress (e.g., `[Overall: 10%] 500/5000 test executions completed (1m30s)`).
 - **`slog` Integration:** The verbosity flags (`v`, `vv`, etc.) pass a `loglevel` flag to `go test`. This allows for fine control over logging from one command line.
-- **Serial & Parallel Modes:** Run tests sequentially for quick debugging (`SERIAL`) or in parallel across multiple processes for stress testing (`PARALLEL`).
-- **Detailed Results:** Individual test runs are labeled as **PASSED**, **SLOW** (passed but exceeded soft threshold), or **FAILED**.
+- **Serial & Parallel modes:** Run tests sequentially for quick debugging (`SERIAL`) or in parallel across multiple processes for stress testing (`PARALLEL`).
+- **Detailed results:** Individual test runs are labeled as **PASSED**, **SLOW** (passed but exceeded soft threshold), or **FAILED**.
   - FAILED test runs are further segmented into TIMEOUT due to hitting hard threshold or ERROR. 
   - For ERROR, the exact message per test run is printed to stdout.
   - In Parallel mode, chunks of test runs are shown as all PASSED, some SLOW, or some FAILED. FAILED runs are labeled individually.
-- **Rich & Readable Output:** Color-coded, real-time logging and a final summary report.
+- **Rich & readable output:** Color-coded, real-time logging and a final summary report.
 - **Fail-Fast (for Timeouts):** TIMEOUT usually indicate a deadlock/livelock, so remaining runs for that specific test are canceled.
   - ERRORs are assumed to be non-deterministic, so the remaining runs for that test are allowed to proceed.
-- **Test Suites:** Pre-defined test suites for Assignments 3, 4, and 5 (e.g., `A4A`, `A4B`, `A5C_All`).
-- **Flexible Configuration:** Control the number of sets, parallel processes per set, soft/hard time thresholds, log verbosity, etc. via command-line flags.
-- **Detailed Logging:** Creates `.log` files for all failed or slow runs, and `_summary.txt` files for parallel aggregation.
+- **Test suites:** Pre-defined test suites for Assignments 3, 4, and 5 (e.g., `A4A`, `A4B`, `A5C_All`).
+- **Flexible vonfiguration:** Control the number of sets, parallel processes per set, soft/hard time thresholds, log verbosity, etc. via command-line flags.
+- **Input sanitization:** Robust handling and sanity check of inputs and configuration paramaters.
+- **Detailed logging:** Creates `.log` files for all failed or slow runs, and `_summary.txt` files for parallel aggregation.
 
 - ## How to Use
 
@@ -82,7 +83,8 @@ If you don't want to add this, just run the script without any -v flags -- or mo
 
 **IMPORTANT:** You must be in the correct directory for the assignment part you want to test.
 
-- **For A3 (kvpaxos):** `cd src/kvpaxos`
+- **For A3a (paxos):** `cd src/paxos`
+- **For A3b (kvpaxos):** `cd src/kvpaxos`
 - **For A4a (shardmaster):** `cd src/shardmaster`
 - **For A4b (shardkv):** `cd src/shardkv`
 - **For A5 (paxos model checker):** `cd pkg` (or the root directory with `go.mod`)
@@ -103,7 +105,7 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 ./run_tests.sh -p -z A4B 1000`
 ```
 
-## 🖥️ Command-Line Interface
+## 🖥️ Command-Line Interface - Guide
 
 ### Usage
 
@@ -114,7 +116,8 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 - `p`: Run in **PARALLEL** mode (default: `SERIAL`).
 - `n NUM_PROCS`: (Parallel) Set number of parallel processes per test (default: 2).
 - `g PROG_INT`: (Parallel) Set progress report interval *per worker* (default: 10).
-- `z TESTSUITE`: Use a pre-defined test suite (e.g., `A4A`, `A4B`, `A5C_All`).
+- `z TESTSUITE`: Use a pre-defined test suite.
+  - Supported test suites: A4A, A4B, A5A_State, A5A_Search, A5A_PP, A5A_All, A5B, A5C_Basic, A5C_Pred, 5C_All
 - `v[v]...`: Set `slog` verbosity. Requires `slog` setup in your `_test.go` file.
     - `v`: Error
     - `vv`: Warn
@@ -129,12 +132,46 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 - `TOTAL_SETS`: Number of times to run each test (default: 100 for Serial, 500 for Parallel).
 - `TestName1...`: Specific test function names to run (default: all tests found).
 
+## Interpreting the Output
 
+1. **Configuration:** The script first prints the configuration and all parameters for the batch job.
+2. **Real-time test log:**
+    - **Serial:** A line is printed for each test run (e.g., `Test run 1/100: TestBasic: ... PASSED (1s)`).
+    - **Parallel:** A global `[Overall: ...]` monitor prints total progress. Individual worker progress and failures are also printed as they happen.
+      - Global monitoring process reports on a 10s interval (poll) and/or every 10% (milestone). If no test runs were completed within a 10s interval, it snoozes up to 2 times before the next report.
+      - Individual worker progress reporting intervals are determined by chunk size, which is calculated from batch configuration parameters.
+3. **Final summary:** A report card for the entire batch.
+    - `Total test executions`: The total number of individual `go test` runs.
+    - `Not run`: Tests that couldn't be found (e.g., typo in test name). Very pesky one as it usually failed silently, but no more -- these are called out prominently.
+    - `Passed`: Runs that passed cleanly and under the `SLOW_TIME` threshold.
+    - `Slow`: Runs that *passed* but took longer than `SLOW_TIME`.
+    - `Failed`: Runs that failed, errored, or hit the hard `TIMEOUT`.
+    - `Skipped`: Runs skipped (in serial) or not completed (in parallel) after a `TIMEOUT` FAIL-FAST.
+4. **File artifacts:**
+    - `output_...log`: Detailed logs for any run that was **Failed** or **Slow**.
+      - Passing logs are deleted to conserve disk space, especially important for large parallel batch testing jobs set to a high log verbosity level (we're talking gigabytes).
+    - `unique_...txt`: Summary files showing which tests failed, were slow, passed fully, or not run at all.
 
+## 🙏 Credits
 
+- **Original script & colors:** Jessica Card
+- **Parallelization:** Pranav Mantri
+- **Contributions:** Ryan Sherby, Brian Paick, Anonymous
+- **Author:** Wei Alexander Xin
 
+## Screenshots
 
+### Serial
+In `src/paxos`, using artificially low soft and hard time thresholds to show the different result types.
+```bash
+$ ./run_tests.sh -vv -s 2s -t 5s 5 TestBasic TestDeaf TestMany TestManyForget TestManyUnreliable TestNew
+```
+<img width="899" height="721" alt="Serial_Config_Testing_1 05" src="https://github.com/user-attachments/assets/43860ba5-cb51-415e-9285-ac8400f265ef" />
 
-
+### Parallel
+In `src/paxos`, using artificially low soft and hard time thresholds to show the different result types. Selected test suite `A3A`.
+```bash
+$ ./run_tests.sh -p -n 1 -g 5 -z A3A -vv -s 5s -t 10s 10
+```
 
 
