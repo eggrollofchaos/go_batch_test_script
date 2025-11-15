@@ -157,7 +157,7 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 
 ## 🙏 Credits
 
-- **Original script & colors idea:** Jessica Card 🥹
+- **Original script & colors idea:** Jessica Card (inspired!) 🥹
 - **Parallelization:** Pranav Mantri (massive!) ✨
 - **Contributions:** Ryan Sherby, Brian Paick, Anonymous 🤝
 - **Special thanks:** Professor Geambasu and all CAs 🙇
