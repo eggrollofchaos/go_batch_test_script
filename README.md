@@ -1,4 +1,6 @@
 # COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.05
+Last edited: Nov 15, 2025  
+Author: Wei Alexander Xin
 
 This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).
 
@@ -18,10 +20,10 @@ This script is a comprehensive test runner for the Go programming assignments in
 - **Input sanitization:** Robust handling and sanity check of inputs and configuration paramaters.
 - **Detailed logging:** Creates `.log` files for all failed or slow runs, and `_summary.txt` files for parallel aggregation.
 
-- ## How to Use
+## 🚀 How to use
 
 ### 1. Placement
-Place the `run_tests.sh` script in the directory containing the `go.mod` file and the `_test.go` files you want to run. Or, set the `go env` variables as per the Assignments:
+Download and place the `run_tests.sh` script in the directory containing the `go.mod` file and the `_test.go` files you want to run. Or, set the `go env` variables as per the Assignments:
 
 ```bash
 $ export GO111MODULE=off
@@ -92,10 +94,10 @@ If you don't want to add this, just run the script without any -v flags -- or mo
 Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it is able to find.
 
 ```bash
-`# Run all tests 100 times in SERIAL mode
+# Run all tests 100 times in SERIAL mode
 ./run_tests.sh
 
-# Run all tests 500 times in PARALLEL mode (with progress monitor)
+# Run all tests 500 times in PARALLEL mode
 ./run_tests.sh -p
 
 # Run only "TestBasic" 50 times in SERIAL mode with INFO logging
@@ -105,7 +107,7 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 ./run_tests.sh -p -z A4B 1000`
 ```
 
-## 🖥️ Command-Line Interface - Guide
+## 🖥️ Command-Line Interface - Advanced guide
 
 ### Usage
 
@@ -127,12 +129,12 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 - `t TIMEOUT`: Set the hard timeout deadline. Runs exceeding this are "FAILED" (default: `2m`).
 - `h`: Show the help menu.
 
-### Positional Arguments
+### Positional srguments
 
 - `TOTAL_SETS`: Number of times to run each test (default: 100 for Serial, 500 for Parallel).
 - `TestName1...`: Specific test function names to run (default: all tests found).
 
-## Interpreting the Output
+## 📊 Interpreting the output
 
 1. **Configuration:** The script first prints the configuration and all parameters for the batch job.
 2. **Real-time test log:**
@@ -154,10 +156,12 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 
 ## 🙏 Credits
 
-- **Original script & colors:** Jessica Card
-- **Parallelization:** Pranav Mantri
-- **Contributions:** Ryan Sherby, Brian Paick, Anonymous
-- **Author:** Wei Alexander Xin
+- **Original script & colors idea:** Jessica Card 🥹
+- **Parallelization:** Pranav Mantri (massive!) ✨
+- **Contributions:** Ryan Sherby, Brian Paick, Anonymous 🤝
+- **Special thanks:** Professor Geambasu and all CAs 🙇
+
+---
 
 ## Screenshots
 
@@ -166,12 +170,15 @@ In `src/paxos`, using artificially low soft and hard time thresholds to show the
 ```bash
 $ ./run_tests.sh -vv -s 2s -t 5s 5 TestBasic TestDeaf TestMany TestManyForget TestManyUnreliable TestNew
 ```
-<img width="899" height="721" alt="Serial_Config_Testing_1 05" src="https://github.com/user-attachments/assets/43860ba5-cb51-415e-9285-ac8400f265ef" />
+![Serial - Config, Live updates](Screenshots/Serial_Config_Testing_1.05.png)  
+![Serial - Results](Screenshots/Serial_Results_Logs_1.05.png)  
 
 ### Parallel
 In `src/paxos`, using artificially low soft and hard time thresholds to show the different result types. Selected test suite `A3A`.
 ```bash
 $ ./run_tests.sh -p -n 1 -g 5 -z A3A -vv -s 5s -t 10s 10
 ```
-
+![Parallel - Config, Real-time logging](Screenshots/Parallel_Config_Testing_1.05.png)  
+![Parallel - Additional logging](Screenshots/Parallel_More_Testing_1.05.png)  
+![Parallel - Results](Screenshots/Parallel_Results_Logs_1.05.png)  
 
