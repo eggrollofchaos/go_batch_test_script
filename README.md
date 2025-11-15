@@ -16,8 +16,8 @@ This script is a comprehensive test runner for the Go programming assignments in
 - **Fail-Fast (for Timeouts):** TIMEOUT usually indicate a deadlock/livelock, so remaining runs for that specific test are canceled.
   - ERRORs are assumed to be non-deterministic, so the remaining runs for that test are allowed to proceed.
 - **Test suites:** Pre-defined test suites for Assignments 3, 4, and 5 (e.g., `A4A`, `A4B`, `A5C_All`).
-- **Flexible vonfiguration:** Control the number of sets, parallel processes per set, soft/hard time thresholds, log verbosity, etc. via command-line flags.
-- **Input sanitization:** Robust handling and sanity check of inputs and configuration paramaters.
+- **Flexible configuration:** Control the number of sets, parallel processes per set, soft/hard time thresholds, log verbosity, etc. via command-line flags.
+- **Input sanitization:** Robust handling and sanity check of inputs and configuration parameters.
 - **Detailed logging:** Creates `.log` files for all failed or slow runs, and `_summary.txt` files for parallel aggregation.
 
 ## 🚀 How to use
@@ -80,7 +80,7 @@ func main() {
 }
 ```
 
-If you don't want to add this, just run the script without any -v flags -- or modify the script to integrate it with the custom logging system you’ve implemented!
+If you don't want to add this, just run the script without any -v flags -- or modify the script to integrate it with the custom logging system you've implemented!
 
 ### 4. Execution (quick launch)
 
@@ -130,7 +130,7 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
 - `t TIMEOUT`: Set the hard timeout deadline. Runs exceeding this are "FAILED" (default: `2m`).
 - `h`: Show the help menu.
 
-### Positional srguments
+### Positional arguments
 
 - `TOTAL_SETS`: Number of times to run each test (default: 100 for Serial, 500 for Parallel).
 - `TestName1...`: Specific test function names to run (default: all tests found).
