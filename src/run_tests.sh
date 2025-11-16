@@ -192,6 +192,26 @@ extract_time_from_string() {
   echo "$time_str|$time_sec"
 }
 
+# Helper function to check that source code is able to build successfully
+pre_flight_build_check() {
+  # printf "${BRIGHT_CYAN_ON_BLACK}Running pre-flight build check...${RESET_ALL}\n"
+  # Capture both stdout and stderr from the build command
+  build_output=$(go build ./... 2>&1)
+  build_status=$?
+
+  # Build failed
+  if (( build_status != 0 )); then
+    printf "${RED_BOLD_ON_GREY}BUILD FAILED${RESET_ALL}\n"
+    printf "Batch test job cannot begin because source code does not compile.\n"
+    printf "Please fix the compile errors below:\n\n"
+    # Print the captured build error
+    echo "$build_output"
+    echo
+    exit 1
+  # else
+    # printf "${GREEN_BOLD_ON_BLACK}Build check passed.${RESET_ALL}\n\n"
+  fi
+}
 # Helper function to parse through positional arguments for test names
 discover_tests() {
   if (( "${#SELECTED_TESTS[@]}" == 0 )); then     # no test names specified in command line
@@ -657,6 +677,9 @@ if [[ $IS_SUITE == true ]] && (( $# > 0 )); then
   echo
   exit 1
 fi
+
+# Ensure that code actually builds successfully
+pre_flight_build_check
 
 # If used -z TESTSUITE
 if [[ $IS_SUITE == true ]]; then
