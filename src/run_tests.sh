@@ -12,7 +12,7 @@
 # https://github.com/eggrollofchaos/go_batch_test_script
 
 # NEW IN Version 1.06
-# Added pre-flight built check: checks to ensure source code is able to build before running tests.
+# Added pre-flight build check: checks to ensure source code is able to build before running tests.
 # Build errors are captured and output to terminal.
 
 # INTRODUCTION
