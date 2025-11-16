@@ -18,6 +18,7 @@ This script is a comprehensive test runner for the Go programming assignments in
 - **Test suites:** Pre-defined test suites for Assignments 3, 4, and 5 (e.g., `A4A`, `A4B`, `A5C_All`).
 - **Flexible configuration:** Control the number of sets, parallel processes per set, soft/hard time thresholds, log verbosity, etc. via command-line flags.
 - **Input sanitization:** Robust handling and sanity check of inputs and configuration parameters.
+- **Pre-flight build checker:** Prior to running batch, captures build errors and outputs to terminal.
 - **Detailed logging:** Creates `.log` files for all failed or slow runs, and `_summary.txt` files for parallel aggregation.
 
 ## 🚀 How to use
