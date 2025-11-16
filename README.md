@@ -49,38 +49,83 @@ Add this code to your `*_test.go` file(s) (e.g., `test_test.go`):
 
 ```go
 import (
-    "flag"
-    "log/slog"
-    "os"
+  "flag"
+  "log/slog"
+  "os"
 )
 
-// This main function is called by <go test> before any tests are run
-func main() {
-    // Register -loglevel flag with the 'flag' package
-    logLevel := flag.Int("loglevel", 0, "Set log level: 0=Error, 1=Warn, 2=Info, 3=Debug/Trace")
-    
-    // This is a bit of a hack to ensure flags are parsed,
-    // because apparently <go test> doesn't parse custom flags automatically.
-    flag.Parse()
+// TestMain is run by <go test> before any actual tests
+func TestMain(m *testing.M) {
+  // Register loglevel flag with `flag` package, default 0 disables all `slog` messages
+  logLevelFlag := flag.Int("loglevel", 0, "set debug log level (default 0: None, 1=Error, 2=Warn, 3=Info, 4=Debug")
+  flag.Parse()
 
-    var level slog.Level
-    switch *logLevel {
-    case 1:
-        level = slog.LevelWarn
-    case 2:
-        level = slog.LevelInfo
-    case 3:
-        level = slog.LevelDebug
-    default:
-        level = slog.LevelError
-    }
-    
-    logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
-    slog.SetDefault(logger)
+  // Set default to a `slog.Level` value higher than any defined log messages, meaning none would trigger
+  logLevel := slog.LevelError + 1
+  switch *logLevelFlag {
+  case 1:
+    logLevel = slog.LevelError
+  case 2:
+    logLevel = slog.LevelWarn
+  case 3:
+    logLevel = slog.LevelInfo
+  case 4:
+    logLevel = slog.LevelDebug
+  }
+  
+  if *logLevelFlag > 0 {
+    fmt.Printf("Logging enabled: global log level set to (%v).\n\n", logLevel)
+  }
+  // Alternative is NewTextHandler
+  logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+    Level: logLevel,
+  }))
+  // Use `slog` global default logger
+  slog.SetDefault(logger)
+
+  os.Exit(m.Run())
 }
 ```
 
-If you don't want to add this, just run the script without any -v flags -- or modify the script to integrate it with the custom logging system you've implemented!
+#### Sample log messages
+Added in `.go` files:
+```go
+slog.Error("LOG - server.StartServer() - StartServer called:", "me", me)
+slog.Warn("LOG - server.StartServer() - StartServer called:", "me", me)
+slog.Info("LOG - server.StartServer() - StartServer called:", "me", me)
+slog.Debug("LOG - server.StartServer() - StartServer called:", "me", me)
+```
+
+#### Examples (under the hood)
+No logging (for production run, assignment hand-in), same as `go test -loglevel 0`, omit `-v` flag in test script:
+> ```bash
+> $ go test
+> Test: Basic leave/join ...
+> ...
+> ```
+
+`Error` level logging only, `-v` in test script:
+> ```bash
+> $ go test -loglevel 1
+> {"time":"2025-11-16T13:55:48.92208-05:00","level":"ERROR","msg":"LOG - server.StartServer() - StartServer called:","me":0}
+> Test: Basic leave/join ...
+> ...
+> ```
+
+Everything `Debug` and below, `-vvvv` in test script:
+> ```bash
+> $ go test -loglevel 4
+> {"time":"2025-11-16T13:46:51.627065-05:00","level":"ERROR","msg":"LOG - server.StartServer() - StartServer called:","me":0}
+> {"time":"2025-11-16T13:46:51.627174-05:00","level":"WARN","msg":"LOG - server.StartServer() - StartServer called:","me":0}
+> {"time":"2025-11-16T13:46:51.627176-05:00","level":"INFO","msg":"LOG - server.StartServer() - StartServer called:","me":0}
+> {"time":"2025-11-16T13:46:51.627177-05:00","level":"DEBUG","msg":"LOG - server.StartServer() - StartServer called:","me":0}
+> Test: Basic leave/join ...
+> ...
+> ```
+
+Etc.
+
+If you don't wish to use `slog` integration, just run the script without any `-v` flags -- or modify the script to integrate it with the custom logging system you've implemented!
 
 ### 4. Execution (quick launch)
 
