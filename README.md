@@ -123,7 +123,8 @@ Everything `Debug` and below, `-vvvv` in test script:
 > ...
 > ```
 
-Etc.
+Etc.  
+Note that the above log lines would not appear in terminal output; they are captured and redirected to log files produced by this batch test script.
 
 If you don't wish to use `slog` integration, just run the script without any `-v` flags -- or modify the script to integrate it with the custom logging system you've implemented!
 
