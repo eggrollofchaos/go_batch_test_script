@@ -7,9 +7,13 @@
 # Special thanks to Pranav Mantri for parallelization
 # Thanks to Ryan Sherby, Brian Paick, and Anonymous for contributions
 # Author: Wei Alexander Xin
-# Last edited: Nov 15, 2025
-# Version: 1.05
+# Last edited: Nov 16, 2025
+# Version: 1.06
 # https://github.com/eggrollofchaos/go_batch_test_script
+
+# NEW IN Version 1.06
+# Added pre-flight built check: checks to ensure source code is able to build before running tests.
+# Build errors are captured and output to terminal.
 
 # INTRODUCTION
 # This is fairly robust batch test script for COMS 4113 Golang programming assignments using the <go test> command.
