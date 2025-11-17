@@ -1,10 +1,14 @@
-# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.06
-Last edited: Nov 16, 2025  
+# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.07
+Last edited: Nov 17, 2025  
 Author: Wei Alexander Xin
 
 This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).
 
-### UPDATE: V1.06 - Added a pre-flight build checker!  
+### UPDATE: V1.07 - Fixed test failure message capture logic!
+Previously upon encountering a test failure, the script checked the last 30 lines, looked for the line containing `'--- FAIL:'`, and returned the next line (which is incorrect).  
+Now the script looks for the failure message in _preceding_ line(s). Also the lookback window has been bumped up to 250 lines,
+
+### UPDATE: V1.06 - Added a pre-flight build checker!
 Previously if your source code didn't build successfully, running this script would lead to either a confusing error followed by program exit, or the batch job begins but all runs fail noisily.  
 Now the script checks to ensure source code is able to be built, prior to commencing batch job.  
 If the build fails, build errors are captured and output to terminal, then the program terminates gracefully.
@@ -14,8 +18,8 @@ If the build fails, build errors are captured and output to terminal, then the p
 - **`slog` Integration:** The verbosity flags (`v`, `vv`, etc.) pass a `loglevel` flag to `go test`. This allows for fine control over logging from one command line.
 - **Serial & Parallel modes:** Run tests sequentially for quick debugging (`SERIAL`) or in parallel across multiple processes for stress testing (`PARALLEL`).
 - **Detailed results:** Individual test runs are labeled as **PASSED**, **SLOW** (passed but exceeded soft threshold), or **FAILED**.
-  - FAILED test runs are further segmented into TIMEOUT due to hitting hard threshold or ERROR. 
-  - For ERROR, the exact message per test run is printed to stdout.
+  - FAILED test runs are further segmented into TIMEOUT due to hitting hard threshold or other ERROR. 
+  - For ERROR, the exact failure message per test run is printed to stdout.
   - In Parallel mode, chunks of test runs are shown as all PASSED, some SLOW, or some FAILED. FAILED runs are labeled individually.
 - **Rich & readable output:** Color-coded, real-time logging and a final summary report.
 - **Fail-Fast (for Timeouts):** TIMEOUT usually indicate a deadlock/livelock, so remaining runs for that specific test are canceled.
