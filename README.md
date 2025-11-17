@@ -1,8 +1,13 @@
-# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.05
-Last edited: Nov 15, 2025  
+# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.06
+Last edited: Nov 16, 2025  
 Author: Wei Alexander Xin
 
 This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).
+
+### UPDATE: V1.06 - Added a pre-flight build checker!  
+Previously if your source code didn't build successfully, running this script would lead to either a confusing error followed by program exit, or the batch job begins but all runs fail noisily.  
+Now the script checks to ensure source code is able to be built, prior to commencing batch job.  
+If the build fails, build errors are captured and output to terminal, then the program terminates gracefully.
 
 ## 🌟 Features
 - **Overall progress monitor:** In `PARALLEL` mode, a monitor now tracks all worker processes and prints the total batch progress (e.g., `[Overall: 10%] 500/5000 test executions completed (1m30s)`).
