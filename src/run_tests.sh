@@ -7,13 +7,17 @@
 # Special thanks to Pranav Mantri for parallelization
 # Thanks to Ryan Sherby, Brian Paick, and Anonymous for contributions
 # Author: Wei Alexander Xin
-# Last edited: Nov 16, 2025
-# Version: 1.06
+# Last edited: Nov 17, 2025
+# Version: 1.07
 # https://github.com/eggrollofchaos/go_batch_test_script
 
-# NEW IN Version 1.06
+# MAJOR CHANGES IN VERSION 1.07
+# Fixed test failure message capture logic.
+#   After finding '--- FAIL:', look for failure message in preceding line(s), not next line.
+
+# MAJOR CHANGES IN VERSION 1.06
 # Added pre-flight build check: checks to ensure source code is able to build before running tests.
-# Build errors are captured and output to terminal.
+#   Build errors are captured and output to terminal.
 
 # INTRODUCTION
 # This is fairly robust batch test script for COMS 4113 Golang programming assignments using the <go test> command.
@@ -98,17 +102,17 @@ TOTAL_PROCS=4                       # total parallel processes: NUM_TESTS x NUM_
 VERBOSE=0                           # debug logging verbosity level: 0=None, 1=Error, 2=Warn, 3=Info, 4=Debug/Trace
 VERBOSE_STR="None"
 VERBOSE_CMD=""
-SLOW_TIME=1m                        # slow threshold: set lower to be vigilant
+SLOW_TIME=1m                        # SLOW threshold: set lower to be vigilant
 SLOW_TIME_SEC=60
 TIMEOUT=2m                          # hard deadline for each run, enforced by <go test> -timeout flag
 TIMEOUT_SEC=120
 
 # Test runs (executions) result counters
-NOT_RUN=0                           # tests with invalid name, i.e. <go test> returns 'no tests to run'
-PASSED=0                            # tests that passed (within slow time threshold)
-SLOW=0                              # tests that passed but exceeded slow time threshold
-FAILED=0                            # tests that errored or exceeded hard timeout
-SKIPPED=0                           # (FAIL-FAST) after failure, runs skipped for same test
+NOT_RUN=0                           # runs that were NOT RUN due to test having invalid name, i.e. <go test> returns 'no tests to run'
+PASSED=0                            # runs that PASSED (within SLOW time threshold)
+SLOW=0                              # runs that PASSED but exceeded SLOW time threshold
+FAILED=0                            # runs that FAILED due to error or exceeding hard TIMEOUT
+SKIPPED=0                           # (FAIL-FAST) after failure, runs SKIPPED for that test
 
 # COLORS AND STYLE
 ##########################################################
@@ -371,7 +375,7 @@ print_progress_report_aligned() {
   local failed_style="$RED_BOLD_ON_GREY"
 
   # Define default prefix, progress, and reporting strings
-  local prefix_styled="${failed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
+  local prefix="${failed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
   local progress_info="${runs} run(s) completed"
   local some_slow="${slow} test(s) ${slow_style}SLOW (${slow_str})${RESET_ALL}"
   local some_failed="${failed} test(s) ${failed_style}FAILED${RESET_ALL}"
@@ -383,11 +387,11 @@ print_progress_report_aligned() {
 
   # Logic for what to report
   if (( failed == 0 && slow == 0 )); then         # all PASSED
-    prefix_styled="${passed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
+    prefix="${passed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
     progress_info="${runs} run(s) completed in this worker"
     conj1=""
   elif (( failed == 0 && slow > 0 )); then        # some SLOW
-    prefix_styled="${slow_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
+    prefix="${slow_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
     affix1="$some_slow"
   elif (( failed > 0 && slow == 0 )); then        # some FAILED
     affix1="$some_failed"
@@ -402,7 +406,7 @@ print_progress_report_aligned() {
   fi
 
   # Print with proper alignment and style
-  printf "${prefix_styled}: ${progress_info}${conj1}${affix1}${conj2}${affix2}${chunk_done}\n"
+  printf "${prefix}: ${progress_info}${conj1}${affix1}${conj2}${affix2}${chunk_done}\n"
 }
 
 # Helper function to compare time in seconds
@@ -436,13 +440,13 @@ time_similar_enough() {
 output_unknown_error() {
   local test_name=$1
   local fail_status=$2
-  local fail_reason=$3
+  local fail_msg=$3
   local outfile=$4
 
   echo "unknowns"
   printf '[%s] --\n' "$(date)" >> "$outfile"
   ps -p $$ -o args= >> "$outfile"
-  printf '%-27s %s - %s\n\n' "$test_name:" "$fail_status" "$fail_reason" >> "$outfile"
+  printf '%-27s %s - %s\n\n' "$test_name:" "$fail_status" "$fail_msg" >> "$outfile"
 }
 
 # Helper function to produce final test result counts, Parallel mode
@@ -462,11 +466,11 @@ aggregate_counts_from_summary() {
   shopt -u nullglob
 }
 
-# Helper function to calculate which tests fully passed (no failures, no slow)
+# Helper function to calculate which tests Fully Passed (no FAILED, no SLOW)
 calculate_fully_passing_tests() {
   local all_fully_passed=$2       # false or true
   
-  # Determine fully passing tests from unique_* files
+  # Determine Fully Passing tests from unique_* files
   printf '%s\n' "${SELECTED_TESTS[@]}" | sort > "all_selected_tests_${TEST_STR}.txt"
   
   if [[ $all_fully_passed == true ]]; then
@@ -570,7 +574,7 @@ while getopts "pn:g:z:vs:t:h" opt; do
     esac
 
     ;;
-  s )                                       # set to specify slow time threshold
+  s )                                       # set to specify SLOW time threshold
     slow_arg=$(extract_time_from_string $OPTARG)
     SLOW_TIME=${slow_arg%%|*}
     SLOW_TIME_SEC=${slow_arg#*|}
@@ -586,7 +590,7 @@ while getopts "pn:g:z:vs:t:h" opt; do
       exit 1
     fi
     ;;
-  t )                                       # set to specify hard timeout threshold
+  t )                                       # set to specify hard TIMEOUT threshold
     timeout_arg=$(extract_time_from_string $OPTARG)
     TIMEOUT=${timeout_arg%%|*}
     TIMEOUT_SEC=${timeout_arg#*|}
@@ -751,43 +755,53 @@ echo
 # ===================== SUBROUTINES ==================== #
 ##########################################################
 
-# Function for extracting and formatting failure reasons
-extract_failure_reason() {
+# Function for extracting and formatting failure category (status) and reasons (messages)
+extract_failure_detail() {
   local logfile=$1
   local duration=$2
   local timeout_sec=$3
-  local reason=""
-  local status="UNK_ERROR"
+  local fail_msg=""
+  local search_lines=250
+  local fail_status="UNK_ERROR"
+  local error_line
 
   # 1) Check for panic timeout line
-  panic_line=$(grep -m1 -E '^panic: test timed out after' "$logfile" || true)
+  error_line=$(grep -m1 -E '^panic: test timed out after' "$logfile" || true)
   # Add duration comparison as sanity check
-  if [[ -n "$panic_line" ]] && (( duration >= timeout_sec )); then
-    status="TIMEOUT"
-    reason="$panic_line"
-    echo "$status|$reason"
+  if [[ -n "$error_line" ]] && (( duration >= timeout_sec )); then
+    fail_status="TIMEOUT"
+    fail_msg="$error_line"
+    echo "$fail_status|$fail_msg"
     return
   fi
 
-  # 2) Search for failure block --- FAIL: and capture next line error
-  # Look through last 30 lines
-  tail_lines=$(tail -n 30 "$logfile")
+  # 2) Search for failure block with '--- FAIL:' and capture error message on an earlier line
+  # Look through last 250 lines (in case there are a bunch of stack traces or logging at the end)
+  # Need to look at last occurrence in case multiple runs (and errors) are captured in 250 lines
+  local tail_lines=$(tail -n $search_lines "$logfile")
 
-  fail_line_num=$(echo "$tail_lines" | grep -n '^--- FAIL:' | head -1 | cut -d: -f1)
+  # Grep with line numbers, find last occurrence of FAIL line, get line number
+  local fail_line_num=$(echo "$tail_lines" | grep -n '^--- FAIL:' | tail -1 | cut -d: -f1)
   if [[ -n "$fail_line_num" ]]; then
-    status="ERROR"
-    error_line_num=$((fail_line_num + 1))
-    reason=$(echo "$tail_lines" | sed -n "${error_line_num}p")
-    # strip leading/trailing whitespace
-    reason=$(echo "$reason" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-    echo "$status|$reason"
+    fail_status="ERROR"
+    # Within this block of (up to) 250 lines, get everything up to the FAIL line
+    local lines_before_fail=$(echo "$tail_lines" | head -n "$((fail_line_num - 1))")
+
+    # Search for last line containing '_test.go' (the actual error message)
+    error_line=$(echo "$lines_before_fail" | grep '_test\.go:' | tail -1)
+
+    # Strip leading/trailing whitespace
+    fail_msg=$(echo "$error_line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    echo "$fail_status|$fail_msg"
     return
   fi
 
   # 3) Default fallback for unknown failure but non-zero exit
-  status="UNK_ERROR"
-  reason="unknown test failure"
-  echo "$status|$reason"
+  fail_status="UNK_ERROR"
+  # Output the failure line itself
+  error_line=$(echo "$tail_lines" | head -n "$((fail_line_num - 1))")
+  fail_msg="$error_line - unable to find failure message in log file"
+  echo "$fail_status|$fail_msg"
 }
 
 # Function for checking and appending SLOW result to file
@@ -839,30 +853,29 @@ check_and_append_slow() {
   fi
 }
 
-# Function for pretty-printing failed run results using colors & styles, Parallel mode
+# Function for pretty-printing FAILED run results using colors & styles, Parallel mode
 print_failure_aligned() {
   local test_name=$1
   local run_num=$2
   local duration=$3
   local fail_status=$4
-  local fail_reason=$5
-  local chunk_size=$6
-  local to_skip=$7
-  local style=$8
-  local prefix_fail_reason="[FAILURE]  "
-  local fail_info=$fail_reason
+  local fail_msg=$5
+  local to_skip=$6
+  local style=$7
+  # local prefix_fail="[FAILURE]  "
+  local prefix="[FAIL-SLOW]"            # changed for clarity and alignment
+  local fail_info="$fail_status - $fail_msg"
   local skip_str=""
 
-  # FAIL-FAST logic - only skip for TIMEOUT failures
+  # FAIL-FAST logic - only skip remaining for TIMEOUT failures
   if [[ $fail_status == "TIMEOUT" ]]; then
-    prefix_fail_reason="[FAIL-FAST]"
-    fail_info="$fail_status - $fail_reason"
-    skip_str=$(printf '%*s%s' 61 '' "- skipping remainder of chunk (${to_skip} runs)")  # padding 61 spaces
+    prefix="[FAIL-FAST]"
+    skip_str=$(printf '%*s%s' 61 '' "- skipping remainder of chunk (${to_skip} runs)\n")  # padding 61 spaces
   fi
 
   # Build prefix with colors / styles
-  local prefix_styled="${style}${prefix_fail_reason}${RESET_ALL} ${test_name} failed on run #${run_num} (${duration}s):"
-  local prefix_plain="${prefix_fail_reason} ${test_name} failed on run #${run_num} (${duration}s):"
+  local prefix_styled="${style}${prefix}${RESET_ALL} ${test_name} failed on run #${run_num} (${duration}s):"
+  local prefix_plain="${prefix} ${test_name} failed on run #${run_num} (${duration}s):"
 
   # Calculate length of plain text for padding
   local prefix_len=${#prefix_plain}
@@ -877,7 +890,7 @@ print_failure_aligned() {
   local padding=$(printf '%*s' "$pad_width" '')
   
   # Print with proper alignment and style
-  printf "${prefix_styled}${padding}${fail_reason}\n${skip_str}\n"
+  printf "${prefix_styled}${padding}${fail_info}\n${skip_str}"
 }
 
 # Serial test loop function
@@ -913,11 +926,11 @@ run_serial_test_loop() {
   # Test FAILED
   if (( result != 0 )); then
 
-    failure_info=$(extract_failure_reason "$outfile" "$duration" "$TIMEOUT_SEC")
+    failure_info=$(extract_failure_detail "$outfile" "$duration" "$TIMEOUT_SEC")
     fail_status=${failure_info%%|*}               # extract everything before the first |
-    fail_reason=${failure_info#*|}                # extract everything after the first |
+    fail_msg=${failure_info#*|}                   # extract everything after the first |
 
-    printf "${RED_BOLD_ON_GREY}FAILED${RESET_ALL} (${duration}s) - ${fail_status} - ${fail_reason}\n"
+    printf "${RED_BOLD_ON_GREY}FAILED${RESET_ALL} (${duration}s) - ${fail_status} - ${fail_msg}\n"
     ((FAILED++))
 
     # Only FAIL-FAST skip for TIMEOUT failures
@@ -929,13 +942,13 @@ run_serial_test_loop() {
       skip_failed_map["$test_name"]=1             # skip remaining runs for this test
     fi
 
-    # Write fail status and reason to file for concise reporting
-    printf '%-27s %s - %s\n' "$test_name:" "$fail_status" "$fail_reason" >> "unique_failed_tests_${TEST_STR}.txt"
+    # Write failure status and message to file for concise reporting
+    printf '%-27s %s - %s\n' "$test_name:" "$fail_status" "$fail_msg" >> "unique_failed_tests_${TEST_STR}.txt"
     mv "$outfile" "${outfile%.log}_failed.log"    # add "failed" suffix to log filename
 
     # Write command and failure info for any unknown errors    
     if [[ ${fail_status} == "UNK_ERROR" ]]; then
-      output_unknown_error "$test_name" "$fail_status" "$fail_reason" "unknown_errors_${TEST_STR}.txt"
+      output_unknown_error "$test_name" "$fail_status" "$fail_msg" "unknown_errors_${TEST_STR}.txt"
     fi
 
   else
@@ -1001,13 +1014,13 @@ run_parallel_test_loop() {
     # Test FAILED
     if (( result != 0 )); then
 
-      failure_info=$(extract_failure_reason "$outfile" "$duration" "$TIMEOUT_SEC")
+      failure_info=$(extract_failure_detail "$outfile" "$duration" "$TIMEOUT_SEC")
       fail_status=${failure_info%%|*}
-      fail_reason=${failure_info#*|}
+      fail_msg=${failure_info#*|}
 
       # pretty-print failure line
       to_skip=$((n_end - i))
-      print_failure_aligned "$test_name" "$i" "$duration" "$fail_status" "$fail_reason" "$chunk_size" "$to_skip" "$RED_BOLD_ON_GREY"
+      print_failure_aligned "$test_name" "$i" "$duration" "$fail_status" "$fail_msg" "$to_skip" "$RED_BOLD_ON_GREY"
       failed=1
 
       # Only FAIL-FAST skip for TIMEOUT failures
@@ -1070,15 +1083,15 @@ run_parallel_test_loop() {
     else
       # FAILED
       if (( failed == 1 )); then
-        # Write fail status and reason to file for concise reporting
+        # Write failure status and message to file for concise reporting
         if ! grep -q "^$test_name:" "unique_failed_tests_${TEST_STR}.txt" 2>/dev/null; then
-          printf '%-27s %s - %s\n' "$test_name:" "$fail_status" "$fail_reason" >> "unique_failed_tests_${TEST_STR}.txt"
+          printf '%-27s %s - %s\n' "$test_name:" "$fail_status" "$fail_msg" >> "unique_failed_tests_${TEST_STR}.txt"
         fi
         mv "$outfile" "${outfile%.log}_failed.log"    # add "failed" suffix to log filename
 
         # Write command and failure info for any unknown errors
         if [[ ${fail_status} == "UNK_ERROR" ]]; then
-          output_unknown_error "$test_name" "$fail_status" "$fail_reason" "unknown_errors_${TEST_STR}.txt"
+          output_unknown_error "$test_name" "$fail_status" "$fail_msg" "unknown_errors_${TEST_STR}.txt"
         fi
       
       # SLOW
@@ -1087,7 +1100,7 @@ run_parallel_test_loop() {
         # Look for existing SLOW entries, append if none or if duration is sufficiently different
         check_and_append_slow "$test_name" "$slow_max" "unique_slow_tests_${TEST_STR}.txt"
         mv "$outfile" "${outfile%.log}_slow.log"      # add "slow" suffix to log filename for this chunk
-      else          # all test runs in chunk passed
+      else          # all test runs in chunk PASSED
         # Delete log file -- to save space! especially when doing TRACE logging
         rm "$outfile"
       fi
@@ -1160,8 +1173,8 @@ monitor_overall_progress () {
 
     # If all processes are done AND we've completed all tests, exit
     if (( all_done == 1 && total_completed >= TOTAL_TEST_EX )); then
-      printf "\n${BRIGHT_CYAN_BOLD_ON_BLACK}[Overall:  100%%] All test executions completed in %s.${RESET_ALL} \n" \
-        "$elapsed_str"
+      printf "\n${BRIGHT_CYAN_BOLD_ON_BLACK}[Overall:  100%%] All %s test executions completed in %s.${RESET_ALL} \n" \
+        "$TOTAL_TEST_EX" "$elapsed_str"
       break
     fi
     if (( total_completed == 0 )); then           # skip progress report at 0
@@ -1233,7 +1246,7 @@ if [[ $BATCH_TYPE == "SERIAL" ]]; then
         continue                                  # Skip test because not valid
       fi
       if [[ ${skip_failed_map[$test_name]:-0} -eq 1 ]]; then
-        continue                                  # Skip test due to fail-fast
+        continue                                  # Skip test due to failure
       fi
 
       printf '%-39s ' "$run_info"                 # print current iteration + test + padding to 39 char
@@ -1298,8 +1311,8 @@ tests_slow=0
 tests_failed=0
 tests_skipped=0
 
-all_passed=false                                  # tracks whether all tests Passed, even if some were SLOW
-all_fully_passed=false                            # tracks whether all tests Passed and none were Slow
+all_passed=false                                  # tracks whether all tests PASSED, even if some were SLOW
+all_fully_passed=false                            # tracks whether all tests PASSED and none were SLOW
 if (( PASSED + SLOW == TOTAL_TEST_EX )); then
   all_passed=true
   if (( SLOW == 0 )); then 
@@ -1309,7 +1322,8 @@ fi
 pass_or_slow_rate=$((100 * (PASSED + SLOW)/ TOTAL_TEST_EX))
 full_pass_rate=$((100 * PASSED / TOTAL_TEST_EX))
 
-# Determine fully passing tests, tally up not_run, slow, failed, and fully passing
+# Determine which tests Fully Passed (no SLOW runs, no FAILED runs)
+# Tally up NOT RUN, SLOW, FAILED, and Fully Passing
 calculate_fully_passing_tests "$all_fully_passed"
 tests_not_run=$(count_file_lines "unique_tests_not_run_${TEST_STR}.txt")
 tests_slow=$(count_file_lines "unique_slow_tests_${TEST_STR}.txt")
@@ -1340,11 +1354,11 @@ echo
 # Print verbal summary
 ##########################################################
 
-## All Pass
+## All PASSED
 if [[ $all_passed == true ]]; then
   echo "All tests passed."
 
-  # If all within slow time limit (Fully Passed)
+  # If all within SLOW time limit (Fully Passed)
   if [[ $all_fully_passed == true ]]; then 
 
     # If total sets of tests ≥ 100 OR total tests executed >= 500, not bad
@@ -1358,7 +1372,7 @@ if [[ $all_passed == true ]]; then
     printf "However, ${slow_style}${tests_slow} test(s)${RESET_ALL} had runs that took longer than ${slow_style}${SLOW_TIME}${RESET_ALL} to complete.\n"
   fi
 
-## Not fully passing
+## Not Fully Passing
 else
 
   # Some tests NOT_RUN
@@ -1366,7 +1380,7 @@ else
     printf "${not_run_style}${tests_not_run} test(s)${RESET_ALL} were not run due to test name error.\n"
   fi
 
-  # Some tests fully PASSED?
+  # Some tests Fully Passed?
   if (( tests_full_pass > 0 )); then
     printf "${passed_style}${tests_full_pass} test(s)${RESET_ALL} fully passed.\n"
   else
@@ -1402,31 +1416,31 @@ if (( total_tests_check != TOTAL_TEST_EX )); then
   echo
 fi
 
-# Print any tests not run
+# Print any tests NOT RUN
 if (( tests_not_run > 0 )); then
   printf "${not_run_style}TESTS NOT RUN:${RESET_ALL}\n"
   cat unique_tests_not_run_${TEST_STR}.txt
   echo
 fi
 
-# Print any fully passing tests
+# Print any Fully Passed tests
 if (( tests_full_pass > 0 )); then
   printf "${passed_style}FULLY PASSING TESTS:${RESET_ALL}\n"
   cat unique_full_pass_tests_${TEST_STR}.txt
   echo
 fi
 
-# If not all passing with flying colors...
+# If not all Fully Passing with flying colors...
 if [[ $all_fully_passed == false ]]; then
 
-  # Print any slow tests
+  # Print any SLOW tests
   if (( tests_slow > 0 )); then
     printf "${slow_style}SLOW TESTS:${RESET_ALL}\n"
     cat unique_slow_tests_${TEST_STR}.txt
     echo
   fi
 
-  # Print any failed tests
+  # Print any FAILED tests
   if (( tests_failed > 0 )); then
     printf "${failed_style}FAILED TESTS + REASONS:${RESET_ALL}\n"
     cat unique_failed_tests_${TEST_STR}.txt
@@ -1434,7 +1448,7 @@ if [[ $all_fully_passed == false ]]; then
   fi
 
   # Show test log files
-  echo "Test logs:"
+  printf "${BOLD_UNDERLINE}Test logs:\n"
   ls -la output_${TEST_STR}_*.log 2>/dev/null
   echo
 fi
