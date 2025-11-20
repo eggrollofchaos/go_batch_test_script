@@ -6,7 +6,7 @@ This script is a comprehensive test runner for the Go programming assignments in
 
 ### UPDATE: V1.07 - Fixed test failure message capture logic!
 Previously upon encountering a test failure, the script checked the last 30 lines, looked for the line containing `'--- FAIL:'`, and returned the next line (which is incorrect).  
-Now the script looks for the failure message in _preceding_ line(s). Also the lookback window has been bumped up to 250 lines,
+Now the script looks for the failure message in _preceding_ line(s). Also the lookback window has been bumped up to 250 lines (just in case).
 
 ### UPDATE: V1.06 - Added a pre-flight build checker!
 Previously if your source code didn't build successfully, running this script would lead to either a confusing error followed by program exit, or the batch job begins but all runs fail noisily.  
