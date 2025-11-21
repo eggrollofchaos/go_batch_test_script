@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project will be documented in this file, beginning with Version 1.07.
+All notable changes to this project will be documented in this file, with detail, beginning with Version 1.07.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -13,12 +13,8 @@ FAIL-SLOW vs FAIL-FAST
   - e.g. there is critical issue that needs to be addressed
 - FAIL-SLOW - test is captured and isolated, continue running remaining iterations
   - e.g. want to determine how frequently an error occurs in 100 runs
-- go test -args -help
+- `go test -args -help`
 - `slog` - https://pkg.go.dev/log/slog
-Parallel mode - Overal progress monitoring
-- Reporting interval is poll every 10 seconds
-- If no additional test runs completed in an interval, snooze; can snooze up to twice before next report
-- At milestones (every 10%), record progress more prominently
 
 ### GENERAL
 - Add flag to allow logs to be preserved for Passing tests / chunks, include warning for file size if logging is very verbose, mention current verbosity
@@ -27,7 +23,7 @@ Parallel mode - Overal progress monitoring
   - Add validation for # processes too high, add a warning that can be ignored or overridden
 - In Help, add a note that to end batch, use CTRL-C
 - Slow / Hard time thresholds: add support for decimals
-- Add child PID in logging
+- Add child PID in logging messages
 - At 100%, if some tests were skipped, mention it; if all were skipped, mention it
 - Serial mode - real-time progress logging:
   - Add milestones at each 10%, with elapsed time 
@@ -36,17 +32,24 @@ Parallel mode - Overal progress monitoring
 ## [1.07.1] - 2025-11-20
 
 ### DOCUMENTATION
-Add to code file and README:
+Code file and README:
 - Fix README typos
-- Clarify CHUNK_SIZE calc is TOTAL_SETS x NUM_TESTS / TOTAL_PROCS
-- Each process handles one chunk
-- PROG_INT is max CHUNK_SIZE / 2
+- Parallel mode - Load balancing:
+  - Clarify CHUNK_SIZE calc is TOTAL_SETS x NUM_TESTS / TOTAL_PROCS
+  - Each process handles one chunk
+  - PROG_INT is max CHUNK_SIZE / 2
+- Parallel mode - Overal progress monitoring:
+  - Reporting interval is poll every 10 seconds
+  - If no additional test runs completed in an interval, snooze; can snooze up to twice before next report
+  - At milestones (every 10%), record progress more prominently
 
 ### GENERAL
 - Fix bold/underline of “Test Logs” to not include the lines after it
 - Parallel mode - Real-time progress logging:
   - Update style so that only 100% is **bold**, and update to all caps “CHUNK DONE”
 - Enforce progress interval at 100% of a chunk, even when it doesn’t neatly divide
+- Parallel mode - Overall progress monitoring:
+  - Polling interval and milestone percent moved to global variables POLL_INT_SEC and MILESTONE_PCT
 
 ## [1.07] - 2025-11-17
 
