@@ -38,13 +38,13 @@ Code file and README:
   - Clarify CHUNK_SIZE calc is TOTAL_SETS x NUM_TESTS / TOTAL_PROCS
   - Each process handles one chunk
   - PROG_INT is max CHUNK_SIZE / 2
-- Parallel mode - Overal progress monitoring:
+- Parallel mode - Overall progress monitoring:
   - Reporting interval is poll every 10 seconds
   - If no additional test runs completed in an interval, snooze; can snooze up to twice before next report
   - At milestones (every 10%), record progress more prominently
 
 ### GENERAL
-- Fix bold/underline of “Test Logs” to not include the lines after it
+- Fix bold/underline of “Test Logs” to not include the lines after it, make all caps “TEST LOGS”
 - Parallel mode - Real-time progress logging:
   - Update style so that only 100% is **bold**, and update to all caps “CHUNK DONE”
 - Enforce progress interval at 100% of a chunk, even when it doesn’t neatly divide
