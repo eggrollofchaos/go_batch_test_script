@@ -1,8 +1,10 @@
-# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.07
-Last edited: Nov 17, 2025  
+# COMS 4113: Batch Test Runner (`run_tests.sh`) - v1.07.1
+Last edited: Nov 20, 2025  
 Author: Wei Alexander Xin
 
-This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).
+This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).  
+
+See ![changelog](CHANGELOG.md) for detailed version history.  
 
 ### UPDATE: V1.07 - Fixed test failure message capture logic!
 Previously upon encountering a test failure, the script checked the last 30 lines, looked for the line containing `'--- FAIL:'`, and returned the next line (which is incorrect).  
@@ -20,7 +22,8 @@ If the build fails, build errors are captured and output to terminal, then the p
 - **Detailed results:** Individual test runs are labeled as **PASSED**, **SLOW** (passed but exceeded soft threshold), or **FAILED**.
   - FAILED test runs are further segmented into TIMEOUT due to hitting hard threshold or other ERROR. 
   - For ERROR, the exact failure message per test run is printed to stdout.
-  - In Parallel mode, chunks of test runs are shown as all PASSED, some SLOW, or some FAILED. FAILED runs are labeled individually.
+  - In Parallel mode, chunks of test runs are shown as all PASSED, some SLOW, or some FAILED.
+  - FAILED runs are labeled individually. If a chunk contains SLOW as well as FAILED, FAILED takes precedence.
 - **Rich & readable output:** Color-coded, real-time logging and a final summary report.
 - **Fail-Fast (for Timeouts):** TIMEOUT usually indicate a deadlock/livelock, so remaining runs for that specific test are canceled.
   - ERRORs are assumed to be non-deterministic, so the remaining runs for that test are allowed to proceed.
@@ -198,7 +201,8 @@ Run the script. It will default to **SERIAL** mode, 100 runs, and all tests it i
     - **Serial:** A line is printed for each test run (e.g., `Test run 1/100: TestBasic: ... PASSED (1s)`).
     - **Parallel:** A global `[Overall: ...]` monitor prints total progress. Individual worker progress and failures are also printed as they happen.
       - Global monitoring process reports on a 10s interval (poll) and/or every 10% (milestone). If no test runs were completed within a 10s interval, it snoozes up to 2 times before the next report.
-      - Individual worker progress reporting intervals are determined by chunk size, which is calculated from batch configuration parameters.
+      - Load balancing is handled by chunk size, which is calculated from batch configuration parameters. Each process (worker) handles one chunk.
+      - Individual worker progress reporting interval is set by batch configuration (`-g` flag), with a maximum of (chunk size / 2).
 3. **Final summary:** A report card for the entire batch.
     - `Total test executions`: The total number of individual `go test` runs.
     - `Not run`: Tests that couldn't be found (e.g., typo in test name). Very pesky one as it usually failed silently, but no more -- these are called out prominently.
