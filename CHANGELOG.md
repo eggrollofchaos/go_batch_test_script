@@ -47,9 +47,9 @@ Code file and README:
 - Fix bold/underline of “Test Logs” to not include the lines after it, make all caps “TEST LOGS”
 - Parallel mode - Real-time progress logging:
   - Update style so that only 100% is **bold**, and update to all caps “CHUNK DONE”
-- Enforce progress interval at 100% of a chunk, even when it doesn’t neatly divide
+  - Enforce progress interval at 100% of a chunk, even when it doesn’t neatly divide
 - Parallel mode - Overall progress monitoring:
-  - Polling interval and milestone percent moved to global variables POLL_INT_SEC and MILESTONE_PCT
+  - Polling interval and milestone percent variables moved to global parameters POLL_INT_SEC and MILESTONE_PCT
 
 ## [1.07] - 2025-11-17
 
