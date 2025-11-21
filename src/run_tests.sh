@@ -7,8 +7,8 @@
 # Special thanks to Pranav Mantri for parallelization
 # Thanks to Ryan Sherby, Brian Paick, and Anonymous for contributions
 # Author: Wei Alexander Xin
-# Last edited: Nov 17, 2025
-# Version: 1.07
+# Last edited: Nov 20, 2025
+# Version: 1.07.1
 # https://github.com/eggrollofchaos/go_batch_test_script
 
 # MAJOR CHANGES IN VERSION 1.07
@@ -91,12 +91,15 @@ NUM_TESTS=2                         # based on test in TESTSUITE, or individuall
 TOTAL_TEST_EX=200                   # total test runs to execute: TOTAL_SETS x NUM_TESTS
 
 # Parallel testing config
-PROG_INT=10                         # interval of tests between progress reports
 NUM_PROCS=2                         # per-test # of processes
-                                    # WARNING: if you select 4 tests, with num_procs=2 this script will spawn 8 processes,
-                                    # which is okay for most personal laptops these days, but may starve threads on a 2 core VM
-CHUNK_SIZE=50                       # chunk size: TOTAL_SETS / NUM_PROCS
-TOTAL_PROCS=4                       # total parallel processes: NUM_TESTS x NUM_PROCS
+                                      # WARNING: if you select 4 tests, with num_procs=2 this script will spawn 8 processes,
+                                      # which is okay for most personal laptops these days but may starve threads on a 2 core VM
+TOTAL_PROCS=4                       # total parallel processes: NUM_TESTS x NUM_PROCS, equivalent to total # of chunks
+CHUNK_SIZE=50                       # standard chunk size: (TOTAL_SETS x NUM_TESTS) / TOTAL_PROCS, equivalent to TOTAL_SETS / NUM_PROCS
+                                      # if not evenly divided, last worker (process) will take remainder of test runs
+PROG_INT=10                         # interval of tests between progress reports, max is CHUNK_SIZE / 2
+POLL_INT_SEC=10                     # overall progress monitoring: interval of time (in seconds) between polls
+MILESTONE_PCT=10                    # overall progress monitoring: interval of % progress between milestones
 
 # Logging, time thresholds
 VERBOSE=0                           # debug logging verbosity level: 0=None, 1=Error, 2=Warn, 3=Info, 4=Debug/Trace
@@ -149,7 +152,9 @@ BRIGHT_CYAN_BOLD_ON_BLACK="$ESC$BRIGHT_CYAN;$BOLD;$ON_BLACK$END"
 BRIGHT_CYAN_SLOW_BLINK_ON_BLACK="$ESC$BRIGHT_CYAN;$ON_BLACK;$SLOW_BLINK$END"
 GREY_ON_BLACK="$ESC$GREY;$ON_BLACK$END"
 GREY_BOLD_ON_BLACK="$ESC$GREY;$BOLD;$ON_BLACK$END"
+GREEN_ON_BLACK="$ESC$GREEN;$ON_BLACK$END"
 GREEN_BOLD_ON_BLACK="$ESC$GREEN;$BOLD;$ON_BLACK$END"
+YELLOW_ON_BLACK="$ESC$YELLOW;$ON_BLACK$END"
 YELLOW_BOLD_ON_BLACK="$ESC$YELLOW;$BOLD;$ON_BLACK$END"
 RED_ON_GREY="$ESC$RED;$ON_GREY$END"
 RED_BOLD_ON_GREY="$ESC$RED;$BOLD;$ON_GREY$END"
@@ -370,9 +375,12 @@ print_progress_report_aligned() {
   local prog_fmt=$(printf '%3d' "$prog_pct")      # default to a 2 digit number, therefore pad 1 space
 
   # Define styles
-  local passed_style="$GREEN_BOLD_ON_BLACK"
-  local slow_style="$YELLOW_BOLD_ON_BLACK"
-  local failed_style="$RED_BOLD_ON_GREY"
+  local passed_style="$GREEN_ON_BLACK"
+  local passed_style_100="$GREEN_BOLD_ON_BLACK"
+  local slow_style="$YELLOW_ON_BLACK"
+  local slow_style_100="$YELLOW_BOLD_ON_BLACK"
+  local failed_style="$RED_ON_GREY"
+  local failed_style_100="$RED_BOLD_ON_GREY"
 
   # Define default prefix, progress, and reporting strings
   local prefix="${failed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
@@ -386,6 +394,13 @@ print_progress_report_aligned() {
   local chunk_done=""
 
   # Logic for what to report
+  if (( prog_pct == 100 )); then
+    passed_style=$passed_style_100
+    slow_style=$slow_style_100
+    failed_style=$failed_style_100
+    chunk_done=" - CHUNK DONE"
+  fi
+
   if (( failed == 0 && slow == 0 )); then         # all PASSED
     prefix="${passed_style}[Progress: ${prog_fmt}%%]${RESET_ALL} ${test_name}"
     progress_info="${runs} run(s) completed in this worker"
@@ -399,10 +414,6 @@ print_progress_report_aligned() {
     affix1="$some_slow"
     conj2=", "
     affix2="$some_failed"
-  fi
-
-  if (( prog_pct == 100 )); then
-    chunk_done=" - chunk done"
   fi
 
   # Print with proper alignment and style
@@ -706,10 +717,10 @@ TOTAL_TEST_EX=$((TOTAL_SETS * NUM_TESTS))
 if (( NUM_PROCS > TOTAL_SETS )); then             # NUM_PROCS ≤ TOTAL_SETS
   NUM_PROCS=$TOTAL_SETS
 fi
-TOTAL_PROCS=$((NUM_PROCS * NUM_TESTS))          # TOTAL_PROCS ≤ TOTAL_TEST_EX
+TOTAL_PROCS=$((NUM_PROCS * NUM_TESTS))            # TOTAL_PROCS ≤ TOTAL_TEST_EX
 
-CHUNK_SIZE=$((TOTAL_SETS / NUM_PROCS))          # CHUNK_SIZE ≥ 1
-if (( PROG_INT > CHUNK_SIZE / 2)); then          # PROG_INT ≤ MAX(CHUNK_SIZE/2, 1)
+CHUNK_SIZE=$((TOTAL_SETS / NUM_PROCS))            # CHUNK_SIZE ≥ 1
+if (( PROG_INT > CHUNK_SIZE / 2)); then           # PROG_INT ≤ MAX(CHUNK_SIZE/2, 1)
   PROG_INT=$((CHUNK_SIZE / 2))
   if (( PROG_INT == 0 )); then
     PROG_INT=1
@@ -971,7 +982,7 @@ run_serial_test_loop() {
 # Parallel test loop function
 # Run one test up to N=TOTAL_SET times, divided roughly evenly into chunks of size=CHUNK_SIZE
 # Stop on failure, skip remaining runs in this loop only if TIMEOUT
-# Each loop is a separate background process
+# Each loop is a separate background process, each process handles one chunk
 run_parallel_test_loop() {
   local test_name=$1
   local n_start=$2
@@ -1007,7 +1018,7 @@ run_parallel_test_loop() {
 
     # Check `no tests to run` warning, very pesky
     if grep -q 'testing: warning: no tests to run' "$outfile"; then
-      not_run=$((n_end - i + 1))                # set not_run counter = entire chunk size
+      not_run=$((n_end - i + 1))                  # set not_run counter = entire chunk size
       break                                       # skip remaining tests in this chunk
     fi
 
@@ -1047,7 +1058,8 @@ run_parallel_test_loop() {
     fi
 
     # Print progress report once every PROG_INT runs
-    if (( (i - n_start + 1) % PROG_INT == 0 )); then
+    # Enforce a report printout at 100% in case PROG_INT doesn't divide evenly into CHUNK_SIZE
+    if (( (i - n_start + 1) % PROG_INT == 0 )) || ((i == n_end)); then
       # Compose duration string for SLOW jobs
       if (( slow_min == slow_max )); then
         slow_str="~${slow_max}s"
@@ -1119,7 +1131,8 @@ run_parallel_test_loop() {
   echo "SKIPPED $skipped" >> "${outfile%.log}_summary.txt"
 }
 
-# Monitoring function for tracking aggregate progress, print progress at 10% intervals and every 10 seconds
+# Monitoring function for tracking aggregate progress
+# Print progress at (default) 10% intervals and every 10 seconds
 # Will be run as background process 
 monitor_overall_progress () {
   local start_time=$1                   # Unix timestamp at beginning of entire batch job
@@ -1127,9 +1140,8 @@ monitor_overall_progress () {
   local current_time=0
   local elapsed=0
   local elapsed_str=""
-  local polling_interval=10
 
-  local milestone_interval=$((TOTAL_TEST_EX / 10))
+  local milestone_interval=$((TOTAL_TEST_EX / MILESTONE_PCT))   # number of tests for every (default) 10% progress
   local total_completed=0
   local current_milestone=0
   local pct_done=0
@@ -1185,7 +1197,7 @@ monitor_overall_progress () {
     if (( total_completed == prev_report )); then
       ((reports_skipped++))
       if (( reports_skipped<=2 )); then
-        sleep $polling_interval                   # sleep until next poll
+        sleep $POLL_INT_SEC                       # sleep (default) 10s until next poll
         continue                                
       else
         reports_skipped=0                         # skipped twice, print a report
@@ -1216,7 +1228,7 @@ monitor_overall_progress () {
     fi
     prev_report=$total_completed
     
-    sleep $polling_interval
+    sleep $POLL_INT_SEC
   done
 }
 
@@ -1448,7 +1460,7 @@ if [[ $all_fully_passed == false ]]; then
   fi
 
   # Show test log files
-  printf "${BOLD_UNDERLINE}Test logs:\n"
+  printf "${BOLD_UNDERLINE}TEST LOGS:${RESET_ALL}\n"
   ls -la output_${TEST_STR}_*.log 2>/dev/null
   echo
 fi
