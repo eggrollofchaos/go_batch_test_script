@@ -4,7 +4,7 @@ Author: Wei Alexander Xin
 
 This script is a comprehensive test runner for the Go programming assignments in COMS 4113. It wraps the standard `go test` command to streamline batch execution, providing choice of serial or parallel testing, detailed result aggregation with color-coding, and overall progress monitoring (handy!).  
 
-See ![changelog](CHANGELOG.md) for detailed version history.  
+See [changelog](CHANGELOG.md) for detailed version history.  
 
 ### UPDATE: V1.07 - Fixed test failure message capture logic!
 Previously upon encountering a test failure, the script checked the last 30 lines, looked for the line containing `'--- FAIL:'`, and returned the next line (which is incorrect).  
